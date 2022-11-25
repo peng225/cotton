@@ -1,2 +1,2 @@
-# cotton
-An in memory blob server
+# Cotton
+A simple in-memory blob server.
