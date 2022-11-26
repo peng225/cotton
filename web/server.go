@@ -22,6 +22,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		getHandler(w, r)
 	case http.MethodPost:
 		postHandler(w, r)
+	case http.MethodDelete:
+		deleteHandler(w, r)
 	default:
 		log.Printf("Invalid method: %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -51,4 +53,8 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	memStore.Add(key, body)
 	w.Header().Add("Location", key)
 	w.WriteHeader(http.StatusCreated)
+}
+
+func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	memStore.Delete(r.URL.Path)
 }
