@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	cpath "github.com/peng225/cotton/path"
 	"github.com/peng225/cotton/storage"
 )
 
@@ -20,14 +21,28 @@ func init() {
 func StartServer(port int) {
 	portStr := strconv.Itoa(port)
 
-	var httpServer http.Server
 	http.HandleFunc("/", handler)
-	log.Println("Start server.")
-	httpServer.Addr = ":" + portStr
-	log.Println(httpServer.ListenAndServe())
+	http.HandleFunc("/ready", readyHandler)
+	log.Printf("Start server. port = %s\n", portStr)
+	log.Println(http.ListenAndServe(":"+portStr, nil))
+}
+
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if !cpath.Valid(r.URL.Path) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	if !cpath.Valid(r.URL.Path) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		getHandler(w, r)
@@ -47,6 +62,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := memStore.Get(r.URL.Path)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 	w.Write(data)
 }
@@ -63,6 +79,10 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := path.Join(r.URL.Path, uuid.New().String())
+	if !cpath.Valid(key) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	memStore.Add(key, body)
 	w.Header().Add("Location", key)
 	w.WriteHeader(http.StatusCreated)
@@ -76,6 +96,7 @@ func headHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := memStore.Get(r.URL.Path)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
 }
