@@ -47,6 +47,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := memStore.Get(r.URL.Path)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 	w.Write(data)
 }
@@ -76,6 +77,7 @@ func headHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := memStore.Get(r.URL.Path)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
 }
