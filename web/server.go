@@ -4,7 +4,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path"
 
+	"github.com/google/uuid"
 	"github.com/peng225/cotton/storage"
 )
 
@@ -45,5 +47,8 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	memStore.Add(r.URL.Path, body)
+	key := path.Join(r.URL.Path, uuid.New().String())
+	memStore.Add(key, body)
+	w.Header().Add("Location", key)
+	w.WriteHeader(http.StatusCreated)
 }
