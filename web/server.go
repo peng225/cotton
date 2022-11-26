@@ -4,7 +4,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path"
+	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/peng225/cotton/storage"
 )
 
@@ -14,12 +17,26 @@ func init() {
 	memStore = *storage.NewMemoryStore()
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+func StartServer(port int) {
+	portStr := strconv.Itoa(port)
+
+	var httpServer http.Server
+	http.HandleFunc("/", handler)
+	log.Println("Start server.")
+	httpServer.Addr = ":" + portStr
+	log.Println(httpServer.ListenAndServe())
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		getHandler(w, r)
 	case http.MethodPost:
 		postHandler(w, r)
+	case http.MethodDelete:
+		deleteHandler(w, r)
+	case http.MethodHead:
+		headHandler(w, r)
 	default:
 		log.Printf("Invalid method: %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -45,5 +62,20 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	memStore.Add(r.URL.Path, body)
+	key := path.Join(r.URL.Path, uuid.New().String())
+	memStore.Add(key, body)
+	w.Header().Add("Location", key)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	memStore.Delete(r.URL.Path)
+}
+
+func headHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := memStore.Get(r.URL.Path)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+	}
+	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
 }
