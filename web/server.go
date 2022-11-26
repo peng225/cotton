@@ -20,11 +20,9 @@ func init() {
 func StartServer(port int) {
 	portStr := strconv.Itoa(port)
 
-	var httpServer http.Server
 	http.HandleFunc("/", handler)
-	log.Println("Start server.")
-	httpServer.Addr = ":" + portStr
-	log.Println(httpServer.ListenAndServe())
+	log.Printf("Start server. port = %s\n", portStr)
+	log.Println(http.ListenAndServe(":"+portStr, nil))
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
