@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"net/http"
-	"strconv"
 
 	"github.com/peng225/cotton/web"
 )
@@ -19,11 +17,5 @@ func main() {
 		log.Fatalf("Invalid port number: %d", port)
 	}
 
-	portStr := strconv.Itoa(port)
-
-	var httpServer http.Server
-	http.HandleFunc("/", web.Handler)
-	log.Println("Start server.")
-	httpServer.Addr = ":" + portStr
-	log.Println(httpServer.ListenAndServe())
+	web.StartServer(port)
 }

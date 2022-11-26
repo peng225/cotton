@@ -17,7 +17,17 @@ func init() {
 	memStore = *storage.NewMemoryStore()
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+func StartServer(port int) {
+	portStr := strconv.Itoa(port)
+
+	var httpServer http.Server
+	http.HandleFunc("/", handler)
+	log.Println("Start server.")
+	httpServer.Addr = ":" + portStr
+	log.Println(httpServer.ListenAndServe())
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		getHandler(w, r)
