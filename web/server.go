@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/hex"
 	"io"
 	"log"
 	"net/http"
@@ -12,14 +13,18 @@ import (
 	"github.com/peng225/cotton/storage"
 )
 
-var memStore storage.MemoryStore
+var (
+	memStore       storage.MemoryStore
+	dumpPostedData bool
+)
 
 func init() {
 	memStore = *storage.NewMemoryStore()
 }
 
-func StartServer(port int) {
+func StartServer(port int, dump bool) {
 	portStr := strconv.Itoa(port)
+	dumpPostedData = dump
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/ready", readyHandler)
@@ -77,6 +82,9 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	if len(body) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+	if dumpPostedData {
+		log.Printf("Posted data dump:\n%v\n", hex.Dump(body))
 	}
 	key := path.Join(r.URL.Path, uuid.New().String())
 	if !cpath.Valid(key) {

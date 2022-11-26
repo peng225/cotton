@@ -15,7 +15,7 @@ import (
 
 func TestAllMethodsSuccess(t *testing.T) {
 	go func() {
-		StartServer(8080)
+		StartServer(8080, false)
 	}()
 
 	require.Eventually(t, func() bool {
