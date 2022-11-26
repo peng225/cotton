@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 	"testing"
@@ -13,11 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAllMethodsSuccess(t *testing.T) {
+func setup() {
 	go func() {
-		StartServer(8080)
+		StartServer(8080, false)
 	}()
+}
 
+func waitServerReady(t *testing.T) {
+	t.Helper()
 	require.Eventually(t, func() bool {
 		resp, err := http.Get("http://localhost:8080/ready")
 		if err != nil {
@@ -25,7 +29,10 @@ func TestAllMethodsSuccess(t *testing.T) {
 		}
 		return resp.StatusCode == http.StatusOK
 	}, time.Second*10, time.Millisecond*200)
+}
 
+func TestAllMethods(t *testing.T) {
+	waitServerReady(t)
 	// POST
 	resp, err := http.Post("http://localhost:8080/test/data", "text/plain;charset=UTF-8", bytes.NewReader([]byte("test data")))
 	require.NoError(t, err)
@@ -41,9 +48,9 @@ func TestAllMethodsSuccess(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 	assert.Equal(t, []byte("test data"), body)
-	assert.Equal(t, int64(len(body)), resp.ContentLength)
+	assert.True(t, resp.Uncompressed)
+	resp.Body.Close()
 
 	// HEAD
 	resp, err = http.Head(url)
@@ -62,4 +69,10 @@ func TestAllMethodsSuccess(t *testing.T) {
 	resp, err = http.Get(url)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestMain(m *testing.M) {
+	setup()
+	code := m.Run()
+	os.Exit(code)
 }

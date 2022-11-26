@@ -1,25 +1,32 @@
 package web
 
 import (
+	"encoding/hex"
 	"io"
 	"log"
 	"net/http"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/peng225/cotton/compress"
 	cpath "github.com/peng225/cotton/path"
 	"github.com/peng225/cotton/storage"
 )
 
-var memStore storage.MemoryStore
+var (
+	memStore       storage.MemoryStore
+	dumpPostedData bool
+)
 
 func init() {
 	memStore = *storage.NewMemoryStore()
 }
 
-func StartServer(port int) {
+func StartServer(port int, dump bool) {
 	portStr := strconv.Itoa(port)
+	dumpPostedData = dump
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/ready", readyHandler)
@@ -64,7 +71,20 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.Write(data)
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		data, err = compress.Compress(data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("Content-Encoding", "gzip")
+	}
+	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
+	writtenLength, err := w.Write(data)
+	if err != nil || writtenLength != len(data) {
+		log.Printf("Failed to write body. writtenLength = %d, err = %v", writtenLength, err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
@@ -77,6 +97,9 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	if len(body) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+	if dumpPostedData {
+		log.Printf("Posted data dump:\n%v\n", hex.Dump(body))
 	}
 	key := path.Join(r.URL.Path, uuid.New().String())
 	if !cpath.Valid(key) {
@@ -97,6 +120,14 @@ func headHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		data, err = compress.Compress(data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("Content-Encoding", "gzip")
 	}
 	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
 }
