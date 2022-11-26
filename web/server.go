@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	cpath "github.com/peng225/cotton/path"
 	"github.com/peng225/cotton/storage"
 )
 
@@ -26,6 +27,10 @@ func StartServer(port int) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	if !cpath.Valid(r.URL.Path) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		getHandler(w, r)
@@ -62,6 +67,10 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := path.Join(r.URL.Path, uuid.New().String())
+	if !cpath.Valid(key) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	memStore.Add(key, body)
 	w.Header().Add("Location", key)
 	w.WriteHeader(http.StatusCreated)
