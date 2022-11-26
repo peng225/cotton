@@ -22,8 +22,20 @@ func StartServer(port int) {
 	portStr := strconv.Itoa(port)
 
 	http.HandleFunc("/", handler)
+	http.HandleFunc("/ready", readyHandler)
 	log.Printf("Start server. port = %s\n", portStr)
 	log.Println(http.ListenAndServe(":"+portStr, nil))
+}
+
+func readyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if !cpath.Valid(r.URL.Path) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {

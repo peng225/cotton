@@ -17,7 +17,14 @@ func TestAllMethodsSuccess(t *testing.T) {
 	go func() {
 		StartServer(8080)
 	}()
-	time.Sleep(time.Second)
+
+	require.Eventually(t, func() bool {
+		resp, err := http.Get("http://localhost:8080/ready")
+		if err != nil {
+			return false
+		}
+		return resp.StatusCode == http.StatusOK
+	}, time.Second*10, time.Millisecond*200)
 
 	// POST
 	resp, err := http.Post("http://localhost:8080/test/data", "text/plain;charset=UTF-8", bytes.NewReader([]byte("test data")))
