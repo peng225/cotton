@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/peng225/cotton/storage"
@@ -24,6 +25,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		postHandler(w, r)
 	case http.MethodDelete:
 		deleteHandler(w, r)
+	case http.MethodHead:
+		headHandler(w, r)
 	default:
 		log.Printf("Invalid method: %s\n", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -57,4 +60,12 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 
 func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	memStore.Delete(r.URL.Path)
+}
+
+func headHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := memStore.Get(r.URL.Path)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+	}
+	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
 }
