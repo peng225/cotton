@@ -15,7 +15,7 @@ func Compress(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// gzip writer must be closed buf.Bytes() is called.
+	// gzip writer must be closed before buf.Bytes() is called.
 	err = gzipWriter.Close()
 	if err != nil {
 		log.Fatalf("Failed to close gzip writer. err = %v", err)
