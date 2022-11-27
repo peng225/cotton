@@ -15,6 +15,10 @@ import (
 	"github.com/peng225/cotton/storage"
 )
 
+const (
+	maxBlobSize = 10 * 1024 * 1024
+)
+
 var (
 	memStore       storage.MemoryStore
 	dumpPostedData bool
@@ -88,13 +92,17 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if len(body) == 0 {
+	if len(body) == 0 || len(body) > maxBlobSize {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
