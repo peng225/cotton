@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/peng225/cotton/compress"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -98,23 +97,10 @@ func TestContentEncoding(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
+	resp.Body.Close()
 	assert.Equal(t, []byte(testData), body)
 	// Encoded data is automatically decompressed by http library.
 	assert.True(t, resp.Uncompressed)
-	resp.Body.Close()
-
-	// HEAD
-	req, err := http.NewRequest(http.MethodHead, url, nil)
-	require.NoError(t, err)
-	req.Header.Add("Accept-Encoding", "gzip")
-	resp, err = http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.NoError(t, err)
-	// Compare the Content-Length with the size of compressed data.
-	compressedData, err := compress.Compress([]byte(testData))
-	require.NoError(t, err)
-	assert.Equal(t, int64(len([]byte(compressedData))), resp.ContentLength)
 }
 
 func TestMain(m *testing.M) {

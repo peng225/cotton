@@ -2,21 +2,24 @@ package web
 
 import (
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/peng225/cotton/compress"
+	"github.com/peng225/cotton/encoding"
 	cpath "github.com/peng225/cotton/path"
 	"github.com/peng225/cotton/storage"
 )
 
 const (
 	maxBlobSize = 10 * 1024 * 1024
+	chunkSize   = 100 * 1024
 )
 
 var (
@@ -69,6 +72,41 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func readChunk(readCloser io.ReadCloser, buf []byte) (int, error) {
+	readSize := 0
+	for readSize < chunkSize {
+		n, err := readCloser.Read(buf)
+		if err != nil && err != io.EOF {
+			log.Printf("Read failed. err = %v", err)
+			return 0, err
+		}
+		readSize += n
+		if err == io.EOF {
+			return readSize, io.EOF
+		}
+		buf = buf[n:]
+		time.Sleep(100 * time.Microsecond)
+	}
+	return readSize, nil
+}
+
+func chunkedTransfer(w http.ResponseWriter, buf []byte) error {
+	n, err := w.Write(buf)
+	if err != nil {
+		return err
+	} else if n != len(buf) {
+		return fmt.Errorf("Write length is too short. n = %d, len(buf) = %d", n, len(buf))
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		panic("w should implement http.Flushter interface.")
+	}
+	flusher.Flush()
+
+	return nil
+}
+
 func getHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := memStore.Get(r.URL.Path)
 	if err != nil {
@@ -76,18 +114,40 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		data, err = compress.Compress(data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
 		w.Header().Add("Content-Encoding", "gzip")
-	}
-	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
-	writtenLength, err := w.Write(data)
-	if err != nil || writtenLength != len(data) {
-		log.Printf("Failed to write body. writtenLength = %d, err = %v", writtenLength, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		// Because "Transfer-Encoding: chunked" is automatically added by calling Flusher.Flush(),
+		// it is not needed to add it explicitly.
+		readCloser, errch := encoding.GzipCompress(data)
+		defer readCloser.Close()
+		buf := make([]byte, chunkSize)
+		for {
+			n, readErr := readChunk(readCloser, buf)
+			if readErr != nil && readErr != io.EOF {
+				log.Printf("readChunk failed. err = %v", readErr)
+				break
+			}
+			if n != 0 {
+				ctErr := chunkedTransfer(w, buf[:n])
+				if ctErr != nil {
+					log.Printf("chunkedTransfer failed. err = %v", ctErr)
+					break
+				}
+			}
+
+			if readErr == io.EOF {
+				break
+			}
+		}
+		if err := <-errch; err != nil {
+			log.Printf("GzipCompress failed. err = %v", err)
+		}
+	} else {
+		w.Header().Add("Content-Length", strconv.Itoa(len(data)))
+		writtenLength, err := w.Write(data)
+		if err != nil || writtenLength != len(data) {
+			log.Printf("Failed to write body. writtenLength = %d, err = %v", writtenLength, err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -129,13 +189,7 @@ func headHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		data, err = compress.Compress(data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Add("Content-Encoding", "gzip")
-	}
+
+	// Accept-Encoding header is ignored in case of HEAD request.
 	w.Header().Add("Content-Length", strconv.Itoa(len(data)))
 }
