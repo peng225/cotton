@@ -58,29 +58,28 @@ make
 
 ### Encoding
 
-Cotton supports only gzip for Content-Encoding.
+Cotton supports only gzip for Content-Encoding. Note that the gzip encoding is not applicable for HEAD requests.
 
 ```
 $ curl -i -X POST localhost:8080/test/data --data-binary @test.txt
 HTTP/1.1 201 Created
-Location: /test/data/67b72b01-0b2a-4f4b-b4e9-e06c90903ae3
-Date: Sun, 27 Nov 2022 13:09:48 GMT
+Location: /test/data/bb8e3ecd-3cfb-452e-9b1b-0f7c27ac7cb4
+Date: Thu, 01 Dec 2022 12:25:09 GMT
 Content-Length: 0
 
-$ curl -i --compressed localhost:8080/test/data/67b72b01-0b2a-4f4b-b4e9-e06c90903ae3
+$ curl -i --compressed localhost:8080/test/data/bb8e3ecd-3cfb-452e-9b1b-0f7c27ac7cb4 
 HTTP/1.1 200 OK
 Content-Encoding: gzip
-Content-Length: 71
-Date: Sun, 27 Nov 2022 13:10:49 GMT
+Date: Thu, 01 Dec 2022 12:25:49 GMT
+Transfer-Encoding: chunked
 
 This is a test file.
 1 + 1 = 2
 foo@example.com
-$ curl -i -I --compressed localhost:8080/test/data/67b72b01-0b2a-4f4b-b4e9-e06c90903ae3
+$ curl -i -I --compressed localhost:8080/test/data/bb8e3ecd-3cfb-452e-9b1b-0f7c27ac7cb4
 HTTP/1.1 200 OK
-Content-Encoding: gzip
-Content-Length: 71
-Date: Sun, 27 Nov 2022 13:14:31 GMT
+Content-Length: 47
+Date: Thu, 01 Dec 2022 12:26:31 GMT
 
 ```
 
