@@ -23,8 +23,8 @@ const (
 )
 
 var (
-	memStore       storage.MemoryStore
-	dumpPostedData bool
+	memStore         storage.MemoryStore
+	dumpReceivedData bool
 )
 
 func init() {
@@ -33,7 +33,7 @@ func init() {
 
 func StartServer(port int, dump bool) {
 	portStr := strconv.Itoa(port)
-	dumpPostedData = dump
+	dumpReceivedData = dump
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/ready", readyHandler)
@@ -62,6 +62,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		getHandler(w, r)
 	case http.MethodPost:
 		postHandler(w, r)
+	case http.MethodPut:
+		putHandler(w, r)
 	case http.MethodDelete:
 		deleteHandler(w, r)
 	case http.MethodHead:
@@ -166,14 +168,63 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if dumpPostedData {
+	if dumpReceivedData {
 		log.Printf("Posted data dump:\n%v\n", hex.Dump(body))
 	}
 	key := path.Join(r.URL.Path, uuid.New().String())
 	if !cpath.Valid(key) {
+		log.Printf("Invalid key. key = %v\n", key)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	memStore.Add(key, body)
+	w.Header().Add("Location", key)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func putHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if len(body) == 0 || len(body) > maxBlobSize {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if dumpReceivedData {
+		log.Printf("Put data dump:\n%v\n", hex.Dump(body))
+	}
+
+	// Path check
+	if !cpath.Valid(r.URL.Path) {
+		log.Printf("Invalid path. path = %v\n", r.URL.Path)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	tokens := strings.Split(r.URL.Path, "/")
+	validatedUUID, err := cpath.ValidateUUID(tokens[len(tokens)-1])
+	if err != nil {
+		log.Printf("Invalid UUID. err = %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Generate key.
+	// This is needed because the UUID part of r.URL.Path is
+	// transformed into the canonical form by ValidateUUID().
+	key := ""
+	for _, token := range tokens[:len(tokens)-1] {
+		key = path.Join(key, token)
+	}
+	key = path.Join(key, validatedUUID.String())
+	key = "/" + key
+
 	memStore.Add(key, body)
 	w.Header().Add("Location", key)
 	w.WriteHeader(http.StatusCreated)

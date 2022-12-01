@@ -68,3 +68,41 @@ func TestPostHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestPutHandler(t *testing.T) {
+	exampleKey := "/test/data/3905f7d8-852f-4df3-bd8c-2fbe8e54c01a"
+	cases := []struct {
+		description        string
+		key                string
+		expectedStatusCode int
+	}{
+		{
+			description:        "Good UUID",
+			key:                exampleKey,
+			expectedStatusCode: http.StatusCreated,
+		},
+		{
+			description:        "UUID is too short",
+			key:                exampleKey[:len(exampleKey)-2],
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			description:        "UUID contains no hyphens",
+			key:                "/test/data/3905f7d8852f4df3bd8c2fbe8e54c01a",
+			expectedStatusCode: http.StatusCreated,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.description, func(t *testing.T) {
+			w := NewTestResponseWriter()
+			req, err := http.NewRequest(http.MethodPut, "http://"+path.Join("localhost:8080", tt.key), bytes.NewBuffer([]byte("test data")))
+			require.NoError(t, err)
+			putHandler(w, req)
+			assert.Equal(t, tt.expectedStatusCode, w.statusCode)
+			if tt.expectedStatusCode == http.StatusCreated {
+				assert.Equal(t, exampleKey, w.Header().Get("Location"))
+			}
+		})
+	}
+}

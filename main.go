@@ -9,9 +9,9 @@ import (
 
 func main() {
 	var port int
-	var dumpPostedData bool
+	var dumpReceivedData bool
 	flag.IntVar(&port, "port", 8080, "Port number.")
-	flag.BoolVar(&dumpPostedData, "dump", false, "Dump posted data.")
+	flag.BoolVar(&dumpReceivedData, "dump", false, "Dump received data.")
 	flag.Parse()
 	log.SetFlags(log.Lshortfile)
 
@@ -19,5 +19,5 @@ func main() {
 		log.Fatalf("Invalid port number: %d", port)
 	}
 
-	web.StartServer(port, dumpPostedData)
+	web.StartServer(port, dumpReceivedData)
 }
