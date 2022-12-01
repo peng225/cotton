@@ -5,9 +5,17 @@ import (
 	"io"
 )
 
+var (
+	gzipWriter *gzip.Writer
+)
+
+func init() {
+	gzipWriter = gzip.NewWriter(nil)
+}
+
 func GzipCompress(data []byte) (io.ReadCloser, chan error) {
 	reader, writer := io.Pipe()
-	gzipWriter := gzip.NewWriter(writer)
+	gzipWriter.Reset(writer)
 	errch := make(chan error, 1)
 
 	go func() {
