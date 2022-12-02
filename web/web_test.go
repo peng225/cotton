@@ -103,6 +103,44 @@ func TestContentEncoding(t *testing.T) {
 	assert.True(t, resp.Uncompressed)
 }
 
+func TestPut(t *testing.T) {
+	waitServerReady(t)
+	exampleKey := "/test/data/3905f7d8-852f-4df3-bd8c-2fbe8e54c01a"
+
+	// First PUT
+	putReq, err := http.NewRequest(http.MethodPut, "http://localhost:8080"+exampleKey, bytes.NewBuffer([]byte("test data")))
+	require.NoError(t, err)
+	resp, err := http.DefaultClient.Do(putReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	location, err := resp.Location()
+	require.NoError(t, err)
+	require.Equal(t, exampleKey, location.Path)
+
+	// GET
+	url := "http://" + path.Join("localhost:8080", location.Path)
+	getReq, err := http.NewRequest(http.MethodGet, url, nil)
+	require.NoError(t, err)
+	// Set an unsupported encoding.
+	getReq.Header.Add("Accept-Encoding", "br")
+	resp, err = http.DefaultClient.Do(getReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("test data"), body)
+	assert.Equal(t, int64(len([]byte("test data"))), resp.ContentLength)
+	resp.Body.Close()
+
+	// Second PUT
+	resp, err = http.DefaultClient.Do(putReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	location, err = resp.Location()
+	require.NoError(t, err)
+	require.Equal(t, exampleKey, location.Path)
+}
+
 func TestMain(m *testing.M) {
 	setup()
 	code := m.Run()

@@ -89,8 +89,13 @@ Date: Thu, 01 Dec 2022 12:26:31 GMT
 - An unique UUID is assigned to each object.
 - Maximum data size is 10MiB.
 - Maximum path length in URL is 1024 including the UUID part.
+- Supported methods are as follows:
+  - GET
+  - HEAD
+  - POST
+  - PUT
+  - DELETE
 
 ## Limitations
 
-- PUT method is not supported, which means that you cannot update the posted data.
 - TLS is not supported.

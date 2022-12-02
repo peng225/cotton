@@ -276,8 +276,48 @@ bar@example.com
 
 This option is used to upload multiple files in a single command. If this option is used, PUT request is issued.
 
-Because cotton does not support PUT method, I just show the command example here.
+As for cotton's PUT method support, only one file can be uploaded simultaneously.
+This is because cotton requires a request path to include a UUID for each uploaded object for idempotency.
 
 ```
-$ curl -v -T "{test.txt,test2.txt}" http://localhost:8080/test/data
+$ curl -v -T test.txt http://localhost:8080/test/data/3905f7d8-852f-4df3-bd8c-2fbe8e54c01a
+*   Trying 127.0.0.1:8080...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> PUT /test/data/3905f7d8-852f-4df3-bd8c-2fbe8e54c01a HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.68.0
+> Accept: */*
+> Content-Length: 47
+> Expect: 100-continue
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 100 Continue
+* We are completely uploaded and fine
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 201 Created
+< Location: /test/data/3905f7d8-852f-4df3-bd8c-2fbe8e54c01a
+< Date: Fri, 02 Dec 2022 11:13:06 GMT
+< Content-Length: 0
+< 
+* Connection #0 to host localhost left intact
+$ curl -v http://localhost:8080/test/data/3905f7d8-852f-4df3-bd8c-2fbe8e54c01a                             
+*   Trying 127.0.0.1:8080...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET /test/data/3905f7d8-852f-4df3-bd8c-2fbe8e54c01a HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.68.0
+> Accept: */*
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Content-Length: 47
+< Date: Fri, 02 Dec 2022 11:14:03 GMT
+< Content-Type: text/plain; charset=utf-8
+< 
+This is a test file.
+1 + 1 = 2
+foo@example.com
+* Connection #0 to host localhost left intact
 ```
