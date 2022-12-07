@@ -41,6 +41,16 @@ func StartServer(port int, dump bool) {
 	log.Println(http.ListenAndServe(":"+portStr, nil))
 }
 
+func StartTLSServer(port int, serverCrt, serverKey string, dump bool) {
+	portStr := strconv.Itoa(port)
+	dumpReceivedData = dump
+
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/ready", readyHandler)
+	log.Printf("Start server. port = %s\n", portStr)
+	log.Println(http.ListenAndServeTLS(":"+portStr, serverCrt, serverKey, nil))
+}
+
 func readyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)

@@ -95,7 +95,3 @@ Date: Thu, 01 Dec 2022 12:26:31 GMT
   - POST
   - PUT
   - DELETE
-
-## Limitations
-
-- TLS is not supported.
